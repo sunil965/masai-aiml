@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boosting Intuition and Methods</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#122238; --bg-deep:#0D1A2B; --panel:#1B3552; --grid-line:rgba(255,255,255,0.055);
+    --amber:#F2A93B; --amber-dim:#F2A93B33; --mint:#6FCF97; --mint-dim:#6FCF9733;
+    --rose:#E15B64; --rose-dim:#E15B6433; --text:#F3F7FB; --muted:#93AAC4; --muted-2:#5F7996;
+    --hair:rgba(255,255,255,0.14); --radius:14px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:
+      linear-gradient(var(--grid-line) 1px, transparent 1px) 0 0/48px 48px,
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px) 0 0/48px 48px,
+      radial-gradient(ellipse at 20% -10%, #1c3a5c 0%, var(--bg) 55%),
+      var(--bg);
+    color:var(--text); font-family:'Inter', sans-serif; overflow:hidden;
+    height:100vh; width:100vw; position:relative;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  #deck{position:relative; height:100vh; width:100vw;}
+  .slide{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    padding:52px 88px; opacity:0; visibility:hidden; transform:translateX(48px);
+    transition:opacity .5s ease, transform .5s ease; pointer-events:none; overflow-y:auto;
+  }
+  .slide.active{opacity:1; visibility:visible; transform:translateX(0); pointer-events:auto;}
+  .slide.prev{transform:translateX(-48px);}
+  .slide-inner{width:100%; max-width:1180px; margin:auto; display:flex; flex-direction:column; align-items:center; text-align:center; gap:20px;}
+  .slide-inner.left{align-items:flex-start; text-align:left;}
+  .brand{position:fixed; top:26px; left:40px; display:flex; align-items:center; gap:10px; color:var(--muted-2); font-size:12px; letter-spacing:.14em; text-transform:uppercase; z-index:5;}
+  .brand svg{width:22px; height:22px; opacity:.8;}
+  .counter{position:fixed; top:26px; right:40px; font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--muted); letter-spacing:.05em; z-index:5;}
+  .counter b{color:var(--amber); font-weight:600;}
+  .progress-track{position:fixed; top:0; left:0; height:3px; width:100%; background:rgba(255,255,255,0.06); z-index:6;}
+  .progress-fill{height:100%; background:linear-gradient(90deg,var(--amber),var(--mint)); width:11.1%; transition:width .4s ease;}
+  .nav-btn{position:fixed; bottom:30px; z-index:6; width:46px; height:46px; border-radius:50%; border:1px solid var(--hair); background:rgba(18,34,56,0.85); color:var(--text); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(6px); transition:background .2s, transform .15s, border-color .2s;}
+  .nav-btn:hover{background:rgba(255,255,255,0.09); border-color:var(--amber);}
+  .nav-btn:active{transform:scale(.92);}
+  .nav-btn.disabled{opacity:.25; pointer-events:none;}
+  #prevBtn{left:40px;} #nextBtn{right:40px;}
+  .tag-strip{position:fixed; bottom:36px; left:50%; transform:translateX(-50%); font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.12em; color:var(--muted-2); text-transform:uppercase; z-index:5;}
+  .eyebrow{font-family:'IBM Plex Mono', monospace; font-size:12.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--amber); display:flex; align-items:center; gap:10px;}
+  .eyebrow::before{content:''; width:22px; height:1px; background:var(--amber);}
+  h1{font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:46px; line-height:1.08; letter-spacing:-.01em;}
+  h2{font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:29px; line-height:1.2; letter-spacing:-.01em;}
+  h3{font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:18px;}
+  p.lede{font-size:16.5px; color:var(--muted); max-width:800px; line-height:1.55;}
+  p.body-text{font-size:14.5px; color:var(--muted); line-height:1.6; max-width:820px;}
+  .formula{font-family:'IBM Plex Mono', monospace; font-size:16px; color:var(--amber); background:rgba(242,169,59,0.08); border:1px solid var(--amber-dim); padding:11px 20px; border-radius:10px;}
+  .chip-row{display:flex; gap:12px; flex-wrap:wrap; justify-content:center;}
+  .chip{font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:.06em; padding:7px 15px; border-radius:999px; border:1px solid var(--hair); color:var(--muted); background:rgba(255,255,255,0.02);}
+  .card-grid{display:grid; gap:14px; width:100%;}
+  .card-grid.two{grid-template-columns:1fr 1fr;} .card-grid.three{grid-template-columns:repeat(3,1fr);}
+  .card{background:var(--panel); border:1px solid var(--hair); border-radius:var(--radius); padding:16px 18px; text-align:left; position:relative; overflow:hidden;}
+  .card::before{content:''; position:absolute; top:0; left:0; width:100%; height:3px; background:var(--card-accent, var(--amber));}
+  .card .num{font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:var(--muted-2); letter-spacing:.1em;}
+  .card h3{margin-top:4px; margin-bottom:5px;} .card p{font-size:12.5px; color:var(--muted); line-height:1.45;}
+  table.data-table{border-collapse:collapse; width:100%; font-family:'IBM Plex Mono', monospace; font-size:12px;}
+  table.data-table th, table.data-table td{border:1px solid var(--hair); padding:6px 8px; text-align:center;}
+  table.data-table th{background:rgba(255,255,255,0.04); color:var(--amber); font-weight:500;}
+  table.data-table td.neg{color:var(--rose);} table.data-table td.pos{color:var(--mint);}
+  table.data-table tr.total td{background:rgba(242,169,59,0.08); font-weight:600; color:var(--amber);}
+  .divider{width:100%; height:1px; background:var(--hair);}
+  .footnote{font-size:11.5px; color:var(--muted-2); max-width:760px;}
+  .badge-check{display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:var(--mint-dim); border:1px solid var(--mint); color:var(--mint); font-size:12px; flex-shrink:0;}
+  .lo-item{display:flex; gap:14px; align-items:flex-start; text-align:left;}
+  .lo-item p{color:var(--text); font-size:15px; line-height:1.5;}
+  .lo-item span.verb{color:var(--amber); font-weight:600;}
+
+  /* Safe HTML/CSS bars */
+  .bar-row{display:flex; align-items:center; gap:14px; width:100%; max-width:760px;}
+  .bar-label{font-size:12.5px; color:var(--muted); width:170px; flex-shrink:0; text-align:right;}
+  .bar-track{flex:1; height:20px; border-radius:10px; background:var(--bg-deep); border:1px solid var(--hair); overflow:hidden;}
+  .bar-fill{height:100%; border-radius:10px 0 0 10px;}
+  .bar-value{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--text); font-weight:600; width:130px; flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<div class="brand">
+  <svg viewBox="0 0 24 24" fill="none"><path d="M3 19 L8 13 L13 15 L20 5" stroke="#F2A93B" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="3" cy="19" r="2" fill="#E15B64"/><circle cx="8" cy="13" r="2" fill="#F2A93B"/><circle cx="13" cy="15" r="2" fill="#F2A93B"/><circle cx="20" cy="5" r="2" fill="#6FCF97"/></svg>
+  Boosting
+</div>
+<div class="counter"><b id="slideNow">01</b> / <span id="slideTotal">09</span></div>
+<div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+<div id="deck">
+
+  <!-- 1: TITLE -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="eyebrow">Session &middot; Ensemble Methods</div>
+      <h1>Boosting Intuition<br>and Methods</h1>
+      <p class="lede">Instead of training many independent models and averaging their votes, what if each new model's only job was to fix what the last one got wrong?</p>
+      <div class="chip-row">
+        <span class="chip">ENSEMBLE METHODS</span>
+        <span class="chip">GRADIENT BOOSTING</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2: LEARNING OBJECTIVES -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">Learning Objectives</div>
+      <h2>By the end of this session, you will be able to:</h2>
+      <div class="divider"></div>
+      <div style="display:flex; flex-direction:column; gap:18px; width:100%; max-width:820px;">
+        <div class="lo-item"><span class="badge-check">1</span><p><span class="verb">Develop</span> the intuition behind Gradient Boosting.</p></div>
+        <div class="lo-item"><span class="badge-check">2</span><p><span class="verb">Explore</span> sequential model improvement.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3: SITUATION -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">The Situation</div>
+      <h2>Predicting the resale price of a used car from its mileage.</h2>
+      <p class="body-text">A first, simple model — just guessing the average price for every car — is obviously wrong for most cars: high-mileage cars sell for less, low-mileage ones for more. Rather than throw that simple model away and start over with something more complex, what if you kept it, and trained a <b style="color:var(--text)">second</b>, small model whose only job is to predict how wrong the first one was?</p>
+      <p class="body-text">That's the entire idea behind <b style="color:var(--amber)">Gradient Boosting</b>: build an ensemble one model at a time, where every new addition specifically targets the current ensemble's mistakes.</p>
+    </div>
+  </section>
+
+  <!-- 4: THE CORE IDEA -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">The Core Idea</div>
+      <h2>Every new model is trained on the previous model's errors</h2>
+      <div class="card-grid three">
+        <div class="card" style="--card-accent:var(--amber);">
+          <div class="num">STEP 1</div>
+          <h3 style="font-size:15px;">Start simple</h3>
+          <p>Begin with a basic prediction — often just the average of the target across all training rows.</p>
+        </div>
+        <div class="card" style="--card-accent:var(--amber);">
+          <div class="num">STEP 2</div>
+          <h3 style="font-size:15px;">Measure the error</h3>
+          <p>Compute the <b style="color:var(--text)">residual</b> for every row: actual value minus current prediction.</p>
+        </div>
+        <div class="card" style="--card-accent:var(--amber);">
+          <div class="num">STEP 3</div>
+          <h3 style="font-size:15px;">Fit and add</h3>
+          <p>Train a small new model to predict those residuals, then add its (scaled) prediction to the running total. Repeat.</p>
+        </div>
+      </div>
+      <p class="footnote">Each individual model in the sequence can be weak and simple — even a single-split tree. What makes the ensemble strong is that every addition is aimed squarely at whatever the ensemble still gets wrong.</p>
+    </div>
+  </section>
+
+  <!-- 5: WORKED EXAMPLE -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">Worked Example</div>
+      <h2>Two rounds of boosting, by hand, on 6 cars</h2>
+      <table class="data-table">
+        <tr><th>Mileage (k)</th><th>Actual ($k)</th><th>Round 0 pred</th><th>Round 1 pred</th><th>Round 2 pred</th></tr>
+        <tr><td>20</td><td>18.0</td><td>11.25</td><td>13.04</td><td>14.65</td></tr>
+        <tr><td>45</td><td>14.5</td><td>11.25</td><td>13.04</td><td>14.65</td></tr>
+        <tr><td>60</td><td>12.0</td><td>11.25</td><td>13.04</td><td>12.24</td></tr>
+        <tr><td>80</td><td>9.5</td><td>11.25</td><td>9.46</td><td>8.66</td></tr>
+        <tr><td>100</td><td>8.0</td><td>11.25</td><td>9.46</td><td>8.66</td></tr>
+        <tr><td>130</td><td>5.5</td><td>11.25</td><td>9.46</td><td>8.66</td></tr>
+        <tr class="total"><td colspan="2">Mean Squared Error</td><td>17.23</td><td>7.60</td><td>3.74</td></tr>
+      </table>
+      <p class="body-text">Round 0 is just the average price for every car — badly wrong, MSE 17.23. Each subsequent round fits a simple stump to the current residuals and adds half of its correction (a learning rate of 0.5) to every prediction. Two rounds in, MSE has dropped to 3.74 — less than a quarter of where it started, without ever training a single complicated model.</p>
+    </div>
+  </section>
+
+  <!-- 6: LEARNING RATE -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">Why Each Correction Gets Scaled Down</div>
+      <h2>The learning rate controls how much of each fix you actually take</h2>
+      <p class="body-text">Taking the full correction every round sounds faster, but it means each new model can overreact to whatever noise was in that round's residuals. Scaling every correction down forces the ensemble to improve gradually and lets later rounds correct the small mistakes earlier rounds couldn't. On the same 150-car dataset with 100 boosting rounds, only the learning rate changed:</p>
+      <div style="display:flex; flex-direction:column; gap:12px; width:100%; align-items:center; margin-top:6px;">
+        <div class="bar-row">
+          <div class="bar-label">Rate = 0.01 (too slow)</div>
+          <div class="bar-track"><div class="bar-fill" style="width:41.8%; background:var(--rose);"></div></div>
+          <div class="bar-value">R&sup2; = 0.418</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Rate = 0.1 (balanced)</div>
+          <div class="bar-track"><div class="bar-fill" style="width:80.2%; background:var(--mint);"></div></div>
+          <div class="bar-value">R&sup2; = 0.802</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Rate = 1.0 (too aggressive)</div>
+          <div class="bar-track"><div class="bar-fill" style="width:56.5%; background:var(--rose);"></div></div>
+          <div class="bar-value">R&sup2; = 0.565</div>
+        </div>
+      </div>
+      <p class="footnote">Too slow, and 100 rounds isn't enough to catch up. Too aggressive, and each round overshoots the residual instead of gently narrowing it. A moderate rate, given enough rounds, wins both ends.</p>
+    </div>
+  </section>
+
+  <!-- 7: BOOSTING VS A SINGLE MODEL -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">Boosting vs. a Single Model, at Scale</div>
+      <h2>150 real cars, one tree vs. 100 rounds of boosting</h2>
+      <div class="card-grid two">
+        <div class="card" style="--card-accent:var(--rose);">
+          <div class="num">SINGLE DECISION TREE</div>
+          <h3>RMSE $3.55k &middot; R&sup2; 0.401</h3>
+          <p>One model has to capture the entire price pattern in one pass — it explains less than half the real price variation.</p>
+        </div>
+        <div class="card" style="--card-accent:var(--mint);">
+          <div class="num">GRADIENT BOOSTING</div>
+          <h3>RMSE $2.04k &middot; R&sup2; 0.802</h3>
+          <p>100 small, sequential corrections nearly double the explained variance and cut the typical error by over 40%.</p>
+        </div>
+      </div>
+      <p class="footnote">Same data, same target — the only difference is building the prediction gradually instead of all at once.</p>
+    </div>
+  </section>
+
+  <!-- 8: RECAP -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">Recap</div>
+      <h2>What we covered</h2>
+      <div style="display:flex; flex-direction:column; gap:16px; width:100%; max-width:820px;">
+        <div class="lo-item"><span class="badge-check" style="background:var(--mint-dim); border-color:var(--mint); color:var(--mint);">&#10003;</span><p><b>Developed the intuition behind Gradient Boosting</b> — start simple, measure the residual error, train a small model to predict that error, add a scaled version of it, and repeat.</p></div>
+        <div class="lo-item"><span class="badge-check" style="background:var(--mint-dim); border-color:var(--mint); color:var(--mint);">&#10003;</span><p><b>Explored sequential model improvement</b> — watched MSE fall round by round on a hand-worked example, and saw why the learning rate has to be neither too small nor too large for that improvement to pay off.</p></div>
+      </div>
+      <div class="divider"></div>
+      <p class="footnote">Next: open the Colab notebook to build a boosted ensemble round by round yourself.</p>
+    </div>
+  </section>
+
+  <!-- 9: TRANSITION TO COLAB -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="eyebrow">Hands-on</div>
+      <h2>Let's build the sequence ourselves.</h2>
+      <p class="lede">Open the paired Colab notebook — implement boosting round by round from scratch, watch the residuals shrink, and compare learning rates on real data.</p>
+      <div class="chip-row">
+        <span class="chip">numpy</span>
+        <span class="chip">pandas</span>
+        <span class="chip">scikit-learn</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<button class="nav-btn" id="prevBtn">&larr;</button>
+<button class="nav-btn" id="nextBtn">&rarr;</button>
+<div class="tag-strip">use &larr; &rarr; or space to navigate</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  let idx = 0;
+  document.getElementById('slideTotal').textContent = String(total).padStart(2,'0');
+  function render(){
+    slides.forEach((s,i)=>{ s.classList.toggle('active', i===idx); s.classList.toggle('prev', i<idx); });
+    document.getElementById('slideNow').textContent = String(idx+1).padStart(2,'0');
+    document.getElementById('progressFill').style.width = ((idx+1)/total*100)+'%';
+    document.getElementById('prevBtn').classList.toggle('disabled', idx===0);
+    document.getElementById('nextBtn').classList.toggle('disabled', idx===total-1);
+  }
+  function go(delta){ idx = Math.min(total-1, Math.max(0, idx+delta)); render(); }
+  document.getElementById('nextBtn').addEventListener('click', ()=>go(1));
+  document.getElementById('prevBtn').addEventListener('click', ()=>go(-1));
+  window.addEventListener('keydown', (e)=>{
+    if(['ArrowRight',' ','PageDown'].includes(e.key)){ e.preventDefault(); go(1); }
+    if(['ArrowLeft','PageUp'].includes(e.key)){ e.preventDefault(); go(-1); }
+  });
+  render();
+</script>
+
+</body>
+</html>
