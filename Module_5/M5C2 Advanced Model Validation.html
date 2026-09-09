@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advanced Model Validation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#122238; --bg-deep:#0D1A2B; --panel:#1B3552; --grid-line:rgba(255,255,255,0.055);
+    --amber:#F2A93B; --amber-dim:#F2A93B33; --mint:#6FCF97; --mint-dim:#6FCF9733;
+    --rose:#E15B64; --rose-dim:#E15B6433; --text:#F3F7FB; --muted:#93AAC4; --muted-2:#5F7996;
+    --hair:rgba(255,255,255,0.14); --radius:14px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:
+      linear-gradient(var(--grid-line) 1px, transparent 1px) 0 0/48px 48px,
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px) 0 0/48px 48px,
+      radial-gradient(ellipse at 20% -10%, #1c3a5c 0%, var(--bg) 55%),
+      var(--bg);
+    color:var(--text); font-family:'Inter', sans-serif; overflow:hidden;
+    height:100vh; width:100vw; position:relative;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  #deck{position:relative; height:100vh; width:100vw;}
+  .slide{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    padding:52px 88px; opacity:0; visibility:hidden; transform:translateX(48px);
+    transition:opacity .5s ease, transform .5s ease; pointer-events:none; overflow-y:auto;
+  }
+  .slide.active{opacity:1; visibility:visible; transform:translateX(0); pointer-events:auto;}
+  .slide.prev{transform:translateX(-48px);}
+  .slide-inner{width:100%; max-width:1180px; margin:auto; display:flex; flex-direction:column; align-items:center; text-align:center; gap:20px;}
+  .slide-inner.left{align-items:flex-start; text-align:left;}
+  .brand{position:fixed; top:26px; left:40px; display:flex; align-items:center; gap:10px; color:var(--muted-2); font-size:12px; letter-spacing:.14em; text-transform:uppercase; z-index:5;}
+  .brand svg{width:22px; height:22px; opacity:.8;}
+  .counter{position:fixed; top:26px; right:40px; font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--muted); letter-spacing:.05em; z-index:5;}
+  .counter b{color:var(--amber); font-weight:600;}
+  .progress-track{position:fixed; top:0; left:0; height:3px; width:100%; background:rgba(255,255,255,0.06); z-index:6;}
+  .progress-fill{height:100%; background:linear-gradient(90deg,var(--amber),var(--mint)); width:11.1%; transition:width .4s ease;}
+  .nav-btn{position:fixed; bottom:30px; z-index:6; width:46px; height:46px; border-radius:50%; border:1px solid var(--hair); background:rgba(18,34,56,0.85); color:var(--text); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(6px); transition:background .2s, transform .15s, border-color .2s;}
+  .nav-btn:hover{background:rgba(255,255,255,0.09); border-color:var(--amber);}
+  .nav-btn:active{transform:scale(.92);}
+  .nav-btn.disabled{opacity:.25; pointer-events:none;}
+  #prevBtn{left:40px;} #nextBtn{right:40px;}
+  .tag-strip{position:fixed; bottom:36px; left:50%; transform:translateX(-50%); font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.12em; color:var(--muted-2); text-transform:uppercase; z-index:5;}
+  .eyebrow{font-family:'IBM Plex Mono', monospace; font-size:12.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--amber); display:flex; align-items:center; gap:10px;}
+  .eyebrow::before{content:''; width:22px; height:1px; background:var(--amber);}
+  h1{font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:46px; line-height:1.08; letter-spacing:-.01em;}
+  h2{font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:29px; line-height:1.2; letter-spacing:-.01em;}
+  h3{font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:18px;}
+  p.lede{font-size:16.5px; color:var(--muted); max-width:800px; line-height:1.55;}
+  p.body-text{font-size:14.5px; color:var(--muted); line-height:1.6; max-width:820px;}
+  .formula{font-family:'IBM Plex Mono', monospace; font-size:16px; color:var(--amber); background:rgba(242,169,59,0.08); border:1px solid var(--amber-dim); padding:11px 20px; border-radius:10px;}
+  .chip-row{display:flex; gap:12px; flex-wrap:wrap; justify-content:center;}
+  .chip{font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:.06em; padding:7px 15px; border-radius:999px; border:1px solid var(--hair); color:var(--muted); background:rgba(255,255,255,0.02);}
+  .card-grid{display:grid; gap:14px; width:100%;}
+  .card-grid.two{grid-template-columns:1fr 1fr;} .card-grid.three{grid-template-columns:repeat(3,1fr);}
+  .card{background:var(--panel); border:1px solid var(--hair); border-radius:var(--radius); padding:16px 18px; text-align:left; position:relative; overflow:hidden;}
+  .card::before{content:''; position:absolute; top:0; left:0; width:100%; height:3px; background:var(--card-accent, var(--amber));}
+  .card .num{font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:var(--muted-2); letter-spacing:.1em;}
+  .card h3{margin-top:4px; margin-bottom:5px;} .card p{font-size:12.5px; color:var(--muted); line-height:1.45;}
+  table.data-table{border-collapse:collapse; width:100%; font-family:'IBM Plex Mono', monospace; font-size:12.5px;}
+  table.data-table th, table.data-table td{border:1px solid var(--hair); padding:7px 10px; text-align:center;}
+  table.data-table th{background:rgba(255,255,255,0.04); color:var(--amber); font-weight:500;}
+  table.data-table td.neg{color:var(--rose);} table.data-table td.pos{color:var(--mint);}
+  table.data-table tr.total td{background:rgba(242,169,59,0.08); font-weight:600; color:var(--amber);}
+  .divider{width:100%; height:1px; background:var(--hair);}
+  .footnote{font-size:11.5px; color:var(--muted-2); max-width:760px;}
+  .badge-check{display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:var(--mint-dim); border:1px solid var(--mint); color:var(--mint); font-size:12px; flex-shrink:0;}
+  .lo-item{display:flex; gap:14px; align-items:flex-start; text-align:left;}
+  .lo-item p{color:var(--text); font-size:15px; line-height:1.5;}
+  .lo-item span.verb{color:var(--amber); font-weight:600;}
+
+  /* Safe HTML/CSS bars — no SVG text, no clipping risk */
+  .bar-row{display:flex; align-items:center; gap:14px; width:100%; max-width:760px;}
+  .bar-label{font-size:12.5px; color:var(--muted); width:190px; flex-shrink:0; text-align:right;}
+  .bar-track{flex:1; height:20px; border-radius:10px; background:var(--bg-deep); border:1px solid var(--hair); overflow:hidden; position:relative;}
+  .bar-fill{height:100%; border-radius:10px 0 0 10px;}
+  .bar-value{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--text); font-weight:600; width:130px; flex-shrink:0;}
+
+  /* Strip-plot dots for single-split variability */
+  .strip-track{position:relative; width:100%; max-width:640px; height:44px; border-radius:10px; background:var(--bg-deep); border:1px solid var(--hair);}
+  .strip-dot{position:absolute; top:12px; width:20px; height:20px; border-radius:50%; background:var(--amber); border:2px solid var(--bg-deep); transform:translateX(-50%);}
+  .strip-axis-label{display:flex; justify-content:space-between; width:100%; max-width:640px; font-size:11px; color:var(--muted-2); font-family:'IBM Plex Mono', monospace;}
+
+  /* Fold rotation grid */
+  .fold-grid{display:grid; grid-template-columns:90px repeat(5, 1fr); gap:4px; width:100%; max-width:640px; font-family:'IBM Plex Mono', monospace; font-size:11px;}
+  .fold-head{color:var(--muted-2); text-align:center; padding:4px;}
+  .fold-row-label{color:var(--muted-2); display:flex; align-items:center; padding:4px;}
+  .fold-cell{height:26px; border-radius:5px; display:flex; align-items:center; justify-content:center; color:var(--bg-deep); font-weight:600;}
+  .fold-train{background:var(--mint);} .fold-test{background:var(--rose); color:var(--text);}
+</style>
+</head>
+<body>
+
+<div class="brand">
+  <svg viewBox="0 0 24 24" fill="none"><rect x="2" y="10" width="4" height="4" rx="1" fill="#6FCF97"/><rect x="7" y="10" width="4" height="4" rx="1" fill="#6FCF97"/><rect x="12" y="10" width="4" height="4" rx="1" fill="#E15B64"/><rect x="17" y="10" width="4" height="4" rx="1" fill="#6FCF97"/></svg>
+  Advanced Model Validation
+</div>
+<div class="counter"><b id="slideNow">01</b> / <span id="slideTotal">09</span></div>
+<div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+<div id="deck">
+
+  <!-- 1: TITLE -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="eyebrow">Session &middot; Model Validation</div>
+      <h1>Advanced Model<br>Validation</h1>
+      <p class="lede">A single train/test split gives you one number. That number might be a fair assessment of your model — or it might just be a lucky roll of the dice.</p>
+      <div class="chip-row">
+        <span class="chip">CROSS-VALIDATION</span>
+        <span class="chip">MODEL VALIDATION TECHNIQUES</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2: LEARNING OBJECTIVES -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">Learning Objectives</div>
+      <h2>By the end of this session, you will be able to:</h2>
+      <div class="divider"></div>
+      <div style="display:flex; flex-direction:column; gap:18px; width:100%; max-width:820px;">
+        <div class="lo-item"><span class="badge-check">1</span><p><span class="verb">Implement</span> k-fold cross-validation for robust model assessment.</p></div>
+        <div class="lo-item"><span class="badge-check">2</span><p><span class="verb">Compare</span> models using cross-validated metrics rather than a single split.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3: SITUATION -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">The Situation</div>
+      <h2>A loan-approval model scores 84% accuracy on a test split. Is that number trustworthy?</h2>
+      <p class="body-text">You trained a model to predict whether a loan should be approved, split your data once into training and test sets, and got 84% accuracy. That single number is about to go in a report, maybe influence a real deployment decision. But it came from <b style="color:var(--text)">one particular way of splitting the data</b> — and nothing guarantees that split was representative.</p>
+      <p class="body-text">This session is about not trusting a single split, and building a validation number you can actually stand behind.</p>
+    </div>
+  </section>
+
+  <!-- 4: THE PROBLEM WITH ONE SPLIT -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">The Problem with a Single Split</div>
+      <h2>Same model, same data, six different splits</h2>
+      <p class="body-text">Nothing else changed here except which rows randomly landed in the test set:</p>
+      <div class="strip-track">
+        <div class="strip-dot" style="left:41.6%;"></div>
+        <div class="strip-dot" style="left:92.0%; background:#6FCF97;"></div>
+        <div class="strip-dot" style="left:24.8%;"></div>
+        <div class="strip-dot" style="left:75.2%;"></div>
+        <div class="strip-dot" style="left:8.0%; background:#E15B64;"></div>
+        <div class="strip-dot" style="left:58.4%;"></div>
+      </div>
+      <div class="strip-axis-label"><span>65% accuracy</span><span>90% accuracy</span></div>
+      <p class="footnote">Six single splits of the exact same model on the exact same data produced accuracies of 75%, 90%, 70%, 85%, 65%, and 80% — a 25-point swing. Reporting just one of these numbers means reporting whichever split you happened to get.</p>
+    </div>
+  </section>
+
+  <!-- 5: WHAT K-FOLD CV DOES -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">Implementing k-Fold Cross-Validation</div>
+      <h2>Every row gets to be in the test set exactly once</h2>
+      <p class="body-text">Split the data into <span class="mono" style="color:var(--amber)">k</span> equal folds. Train <span class="mono" style="color:var(--amber)">k</span> times, each time holding out a different fold as the test set and training on the rest. Every data point is tested on exactly once, across the k rounds — and you get k separate accuracy scores instead of one.</p>
+      <div class="fold-grid">
+        <div class="fold-head"></div>
+        <div class="fold-head">A</div><div class="fold-head">B</div><div class="fold-head">C</div><div class="fold-head">D</div><div class="fold-head">E</div>
+
+        <div class="fold-row-label">Round 1</div>
+        <div class="fold-cell fold-test">test</div><div class="fold-cell fold-train"></div><div class="fold-cell fold-train"></div><div class="fold-cell fold-train"></div><div class="fold-cell fold-train"></div>
+
+        <div class="fold-row-label">Round 2</div>
+        <div class="fold-cell fold-train"></div><div class="fold-cell fold-test">test</div><div class="fold-cell fold-train"></div><div class="fold-cell fold-train"></div><div class="fold-cell fold-train"></div>
+
+        <div class="fold-row-label">Round 3</div>
+        <div class="fold-cell fold-train"></div><div class="fold-cell fold-train"></div><div class="fold-cell fold-test">test</div><div class="fold-cell fold-train"></div><div class="fold-cell fold-train"></div>
+
+        <div class="fold-row-label">Round 4</div>
+        <div class="fold-cell fold-train"></div><div class="fold-cell fold-train"></div><div class="fold-cell fold-train"></div><div class="fold-cell fold-test">test</div><div class="fold-cell fold-train"></div>
+
+        <div class="fold-row-label">Round 5</div>
+        <div class="fold-cell fold-train"></div><div class="fold-cell fold-train"></div><div class="fold-cell fold-train"></div><div class="fold-cell fold-train"></div><div class="fold-cell fold-test">test</div>
+      </div>
+      <p class="footnote">The final result is the <b style="color:var(--text)">mean</b> of the k accuracy scores — and their <b style="color:var(--text)">spread</b> tells you how much to trust that mean.</p>
+    </div>
+  </section>
+
+  <!-- 6: WORKED EXAMPLE -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">Worked Example</div>
+      <h2>5-fold cross-validation on the loan-approval model</h2>
+      <table class="data-table">
+        <tr><th>Fold 1</th><th>Fold 2</th><th>Fold 3</th><th>Fold 4</th><th>Fold 5</th><th>Mean</th><th>Std. Dev.</th></tr>
+        <tr><td>0.688</td><td>0.938</td><td>0.812</td><td>0.812</td><td>0.688</td><td class="pos">0.788</td><td>0.094</td></tr>
+      </table>
+      <p class="body-text">The five fold scores still vary — cross-validation doesn't eliminate variability, real data is genuinely uneven. What it gives you is the <b style="color:var(--text)">full picture</b> instead of one sample from it: a mean of 0.788 with a standard deviation of 0.094, instead of a single, unqualified &ldquo;84%.&rdquo;</p>
+    </div>
+  </section>
+
+  <!-- 7: COMPARING MODELS WITH CV -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">Comparing Models Using Cross-Validated Metrics</div>
+      <h2>Which model is actually better?</h2>
+      <div style="display:flex; flex-direction:column; gap:12px; width:100%; align-items:center; margin-top:6px;">
+        <div class="bar-row">
+          <div class="bar-label">LogisticRegression</div>
+          <div class="bar-track"><div class="bar-fill" style="width:78.7%; background:var(--mint);"></div></div>
+          <div class="bar-value">0.787 &plusmn; 0.094</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">DecisionTreeClassifier</div>
+          <div class="bar-track"><div class="bar-fill" style="width:70.0%; background:var(--rose);"></div></div>
+          <div class="bar-value">0.700 &plusmn; 0.073</div>
+        </div>
+      </div>
+      <p class="footnote">Both models were scored with the same 5-fold split. LogisticRegression wins on mean accuracy — and because both numbers come from cross-validation rather than one split each, this comparison is far less likely to be an artifact of which rows happened to land in which set.</p>
+    </div>
+  </section>
+
+  <!-- 8: RECAP -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">Recap</div>
+      <h2>What we covered</h2>
+      <div style="display:flex; flex-direction:column; gap:16px; width:100%; max-width:820px;">
+        <div class="lo-item"><span class="badge-check" style="background:var(--mint-dim); border-color:var(--mint); color:var(--mint);">&#10003;</span><p><b>Implemented k-fold cross-validation</b> — splitting data into k folds, rotating which fold is held out as the test set, and reporting the mean and spread of the k resulting scores instead of one number from one split.</p></div>
+        <div class="lo-item"><span class="badge-check" style="background:var(--mint-dim); border-color:var(--mint); color:var(--mint);">&#10003;</span><p><b>Compared models using cross-validated metrics</b> — scoring each candidate with the same folds so a model comparison reflects real differences, not which model happened to get an easier split.</p></div>
+      </div>
+      <div class="divider"></div>
+      <p class="footnote">Next: open the Colab notebook to run cross-validation yourself and see the single-split variability firsthand.</p>
+    </div>
+  </section>
+
+  <!-- 9: TRANSITION TO COLAB -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="eyebrow">Hands-on</div>
+      <h2>Let's validate it properly ourselves.</h2>
+      <p class="lede">Open the paired Colab notebook — run k-fold cross-validation with Scikit-learn, see the single-split variability firsthand, and compare two models on equal footing.</p>
+      <div class="chip-row">
+        <span class="chip">numpy</span>
+        <span class="chip">pandas</span>
+        <span class="chip">scikit-learn</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<button class="nav-btn" id="prevBtn">&larr;</button>
+<button class="nav-btn" id="nextBtn">&rarr;</button>
+<div class="tag-strip">use &larr; &rarr; or space to navigate</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  let idx = 0;
+  document.getElementById('slideTotal').textContent = String(total).padStart(2,'0');
+  function render(){
+    slides.forEach((s,i)=>{ s.classList.toggle('active', i===idx); s.classList.toggle('prev', i<idx); });
+    document.getElementById('slideNow').textContent = String(idx+1).padStart(2,'0');
+    document.getElementById('progressFill').style.width = ((idx+1)/total*100)+'%';
+    document.getElementById('prevBtn').classList.toggle('disabled', idx===0);
+    document.getElementById('nextBtn').classList.toggle('disabled', idx===total-1);
+  }
+  function go(delta){ idx = Math.min(total-1, Math.max(0, idx+delta)); render(); }
+  document.getElementById('nextBtn').addEventListener('click', ()=>go(1));
+  document.getElementById('prevBtn').addEventListener('click', ()=>go(-1));
+  window.addEventListener('keydown', (e)=>{
+    if(['ArrowRight',' ','PageDown'].includes(e.key)){ e.preventDefault(); go(1); }
+    if(['ArrowLeft','PageUp'].includes(e.key)){ e.preventDefault(); go(-1); }
+  });
+  render();
+</script>
+
+</body>
+</html>
