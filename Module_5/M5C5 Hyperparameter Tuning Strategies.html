@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hyperparameter Tuning Strategies</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#122238; --bg-deep:#0D1A2B; --panel:#1B3552; --grid-line:rgba(255,255,255,0.055);
+    --amber:#F2A93B; --amber-dim:#F2A93B33; --mint:#6FCF97; --mint-dim:#6FCF9733;
+    --rose:#E15B64; --rose-dim:#E15B6433; --text:#F3F7FB; --muted:#93AAC4; --muted-2:#5F7996;
+    --hair:rgba(255,255,255,0.14); --radius:14px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:
+      linear-gradient(var(--grid-line) 1px, transparent 1px) 0 0/48px 48px,
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px) 0 0/48px 48px,
+      radial-gradient(ellipse at 20% -10%, #1c3a5c 0%, var(--bg) 55%),
+      var(--bg);
+    color:var(--text); font-family:'Inter', sans-serif; overflow:hidden;
+    height:100vh; width:100vw; position:relative;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  #deck{position:relative; height:100vh; width:100vw;}
+  .slide{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    padding:52px 88px; opacity:0; visibility:hidden; transform:translateX(48px);
+    transition:opacity .5s ease, transform .5s ease; pointer-events:none; overflow-y:auto;
+  }
+  .slide.active{opacity:1; visibility:visible; transform:translateX(0); pointer-events:auto;}
+  .slide.prev{transform:translateX(-48px);}
+  .slide-inner{width:100%; max-width:1180px; margin:auto; display:flex; flex-direction:column; align-items:center; text-align:center; gap:20px;}
+  .slide-inner.left{align-items:flex-start; text-align:left;}
+  .brand{position:fixed; top:26px; left:40px; display:flex; align-items:center; gap:10px; color:var(--muted-2); font-size:12px; letter-spacing:.14em; text-transform:uppercase; z-index:5;}
+  .brand svg{width:22px; height:22px; opacity:.8;}
+  .counter{position:fixed; top:26px; right:40px; font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--muted); letter-spacing:.05em; z-index:5;}
+  .counter b{color:var(--amber); font-weight:600;}
+  .progress-track{position:fixed; top:0; left:0; height:3px; width:100%; background:rgba(255,255,255,0.06); z-index:6;}
+  .progress-fill{height:100%; background:linear-gradient(90deg,var(--amber),var(--mint)); width:11.1%; transition:width .4s ease;}
+  .nav-btn{position:fixed; bottom:30px; z-index:6; width:46px; height:46px; border-radius:50%; border:1px solid var(--hair); background:rgba(18,34,56,0.85); color:var(--text); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(6px); transition:background .2s, transform .15s, border-color .2s;}
+  .nav-btn:hover{background:rgba(255,255,255,0.09); border-color:var(--amber);}
+  .nav-btn:active{transform:scale(.92);}
+  .nav-btn.disabled{opacity:.25; pointer-events:none;}
+  #prevBtn{left:40px;} #nextBtn{right:40px;}
+  .tag-strip{position:fixed; bottom:36px; left:50%; transform:translateX(-50%); font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.12em; color:var(--muted-2); text-transform:uppercase; z-index:5;}
+  .eyebrow{font-family:'IBM Plex Mono', monospace; font-size:12.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--amber); display:flex; align-items:center; gap:10px;}
+  .eyebrow::before{content:''; width:22px; height:1px; background:var(--amber);}
+  h1{font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:46px; line-height:1.08; letter-spacing:-.01em;}
+  h2{font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:29px; line-height:1.2; letter-spacing:-.01em;}
+  h3{font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:18px;}
+  p.lede{font-size:16.5px; color:var(--muted); max-width:800px; line-height:1.55;}
+  p.body-text{font-size:14.5px; color:var(--muted); line-height:1.6; max-width:820px;}
+  .formula{font-family:'IBM Plex Mono', monospace; font-size:16px; color:var(--amber); background:rgba(242,169,59,0.08); border:1px solid var(--amber-dim); padding:11px 20px; border-radius:10px;}
+  .chip-row{display:flex; gap:12px; flex-wrap:wrap; justify-content:center;}
+  .chip{font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:.06em; padding:7px 15px; border-radius:999px; border:1px solid var(--hair); color:var(--muted); background:rgba(255,255,255,0.02);}
+  .card-grid{display:grid; gap:14px; width:100%;}
+  .card-grid.two{grid-template-columns:1fr 1fr;} .card-grid.three{grid-template-columns:repeat(3,1fr);}
+  .card{background:var(--panel); border:1px solid var(--hair); border-radius:var(--radius); padding:16px 18px; text-align:left; position:relative; overflow:hidden;}
+  .card::before{content:''; position:absolute; top:0; left:0; width:100%; height:3px; background:var(--card-accent, var(--amber));}
+  .card .num{font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:var(--muted-2); letter-spacing:.1em;}
+  .card h3{margin-top:4px; margin-bottom:5px;} .card p{font-size:12.5px; color:var(--muted); line-height:1.45;}
+  table.data-table{border-collapse:collapse; width:100%; font-family:'IBM Plex Mono', monospace; font-size:12px;}
+  table.data-table th, table.data-table td{border:1px solid var(--hair); padding:6px 8px; text-align:center;}
+  table.data-table th{background:rgba(255,255,255,0.04); color:var(--amber); font-weight:500;}
+  table.data-table td.neg{color:var(--rose);} table.data-table td.pos{color:var(--mint);}
+  table.data-table tr.best td{background:rgba(111,207,151,0.16); font-weight:600; color:var(--mint);}
+  .divider{width:100%; height:1px; background:var(--hair);}
+  .footnote{font-size:11.5px; color:var(--muted-2); max-width:760px;}
+  .badge-check{display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:var(--mint-dim); border:1px solid var(--mint); color:var(--mint); font-size:12px; flex-shrink:0;}
+  .lo-item{display:flex; gap:14px; align-items:flex-start; text-align:left;}
+  .lo-item p{color:var(--text); font-size:15px; line-height:1.5;}
+  .lo-item span.verb{color:var(--amber); font-weight:600;}
+
+  /* Safe HTML/CSS bars */
+  .bar-row{display:flex; align-items:center; gap:14px; width:100%; max-width:760px;}
+  .bar-label{font-size:12.5px; color:var(--muted); width:200px; flex-shrink:0; text-align:right;}
+  .bar-track{flex:1; height:20px; border-radius:10px; background:var(--bg-deep); border:1px solid var(--hair); overflow:hidden;}
+  .bar-fill{height:100%; border-radius:10px 0 0 10px;}
+  .bar-value{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--text); font-weight:600; width:110px; flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<div class="brand">
+  <svg viewBox="0 0 24 24" fill="none"><circle cx="6" cy="6" r="2" fill="#5F7996"/><circle cx="12" cy="6" r="2" fill="#5F7996"/><circle cx="18" cy="6" r="2" fill="#5F7996"/><circle cx="6" cy="12" r="2" fill="#5F7996"/><circle cx="12" cy="12" r="2.6" fill="#F2A93B" stroke="#F2A93B"/><circle cx="18" cy="12" r="2" fill="#5F7996"/><circle cx="6" cy="18" r="2" fill="#5F7996"/><circle cx="12" cy="18" r="2" fill="#5F7996"/><circle cx="18" cy="18" r="2" fill="#5F7996"/></svg>
+  Hyperparameter Tuning
+</div>
+<div class="counter"><b id="slideNow">01</b> / <span id="slideTotal">09</span></div>
+<div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+<div id="deck">
+
+  <!-- 1: TITLE -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="eyebrow">Session &middot; Hyperparameter Tuning</div>
+      <h1>Hyperparameter Tuning<br>Strategies</h1>
+      <p class="lede">Guessing a few configurations by hand and keeping whichever feels best isn't a strategy. Trying every configuration systematically, and measuring each one properly, is.</p>
+      <div class="chip-row">
+        <span class="chip">HYPERPARAMETER TUNING</span>
+        <span class="chip">GRID SEARCH</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2: LEARNING OBJECTIVES -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">Learning Objectives</div>
+      <h2>By the end of this session, you will be able to:</h2>
+      <div class="divider"></div>
+      <div style="display:flex; flex-direction:column; gap:18px; width:100%; max-width:820px;">
+        <div class="lo-item"><span class="badge-check">1</span><p><span class="verb">Implement</span> Grid Search for parameter optimization.</p></div>
+        <div class="lo-item"><span class="badge-check">2</span><p><span class="verb">Search</span> the parameter space systematically.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3: SITUATION -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">The Situation</div>
+      <h2>A model predicting whether a user will click an ad, left on its defaults, quietly overfits.</h2>
+      <p class="body-text">Trained with every default setting, a decision tree grows itself out to depth 10 — deep enough to memorize quirks of the training clicks that won't repeat for a new user. On held-out data it gets only <b style="color:var(--text)">66.7%</b> accuracy. Somewhere in this tree's settings — how deep it's allowed to grow, how many examples a leaf needs before it's allowed to exist — is a better configuration. The question is how to find it without just guessing.</p>
+    </div>
+  </section>
+
+  <!-- 4: HYPERPARAMETERS -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">Hyperparameters</div>
+      <h2>Settings you choose before training, not values the model learns</h2>
+      <p class="body-text">A model's ordinary parameters (like which feature a tree splits on) are learned automatically from the training data. <b style="color:var(--text)">Hyperparameters</b> are different — they're configuration choices you make beforehand, like how deep a tree is allowed to grow, or how many examples a leaf must contain. The model never learns these on its own; you have to set them, and the setting you pick changes how well the model performs.</p>
+      <div class="formula">max_depth, min_samples_leaf, n_estimators, learning_rate &nbsp;&rarr;&nbsp; all hyperparameters</div>
+    </div>
+  </section>
+
+  <!-- 5: GRID SEARCH MECHANISM -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">Grid Search</div>
+      <h2>Try every combination, score each one properly, keep the winner</h2>
+      <div class="card-grid three">
+        <div class="card" style="--card-accent:var(--amber);">
+          <div class="num">STEP 1</div>
+          <h3 style="font-size:15px;">List candidate values</h3>
+          <p>For each hyperparameter, choose a short list of values worth trying — e.g. max_depth of 2, 4, or 6.</p>
+        </div>
+        <div class="card" style="--card-accent:var(--amber);">
+          <div class="num">STEP 2</div>
+          <h3 style="font-size:15px;">Form the grid</h3>
+          <p>Every combination across all the lists becomes one candidate configuration to test.</p>
+        </div>
+        <div class="card" style="--card-accent:var(--amber);">
+          <div class="num">STEP 3</div>
+          <h3 style="font-size:15px;">Cross-validate each</h3>
+          <p>Score every configuration with cross-validation, not a single split, then keep whichever scored highest.</p>
+        </div>
+      </div>
+      <p class="footnote">&ldquo;Grid&rdquo; describes the shape of the search: two hyperparameters with 3 candidate values each form a 3&times;3 grid of 9 configurations to test.</p>
+    </div>
+  </section>
+
+  <!-- 6: WORKED EXAMPLE -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">Worked Example</div>
+      <h2>The full 3&times;3 grid, cross-validated on the ad-click data</h2>
+      <table class="data-table">
+        <tr><th>max_depth</th><th>min_samples_leaf</th><th>Mean CV Accuracy</th></tr>
+        <tr><td>2</td><td>1</td><td>0.676</td></tr>
+        <tr><td>2</td><td>5</td><td>0.689</td></tr>
+        <tr><td>2</td><td>10</td><td>0.689</td></tr>
+        <tr><td>4</td><td>1</td><td>0.698</td></tr>
+        <tr><td>4</td><td>5</td><td>0.711</td></tr>
+        <tr><td>4</td><td>10</td><td>0.747</td></tr>
+        <tr><td>6</td><td>1</td><td>0.733</td></tr>
+        <tr><td>6</td><td>5</td><td>0.702</td></tr>
+        <tr class="best"><td>6</td><td>10</td><td>0.756 &larr; best</td></tr>
+      </table>
+      <p class="body-text">All 9 configurations, each scored with 5-fold cross-validation. The winner — <span class="mono" style="color:var(--amber)">max_depth=6, min_samples_leaf=10</span> — wasn't the deepest option or the shallowest; it was found by actually testing every combination, not by intuition.</p>
+    </div>
+  </section>
+
+  <!-- 7: RESULT -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">The Result</div>
+      <h2>Tuned vs. default, on held-out test data</h2>
+      <div style="display:flex; flex-direction:column; gap:12px; width:100%; align-items:center; margin-top:6px;">
+        <div class="bar-row">
+          <div class="bar-label">Default (unlimited depth)</div>
+          <div class="bar-track"><div class="bar-fill" style="width:66.7%; background:var(--rose);"></div></div>
+          <div class="bar-value">66.7%</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Grid Search best</div>
+          <div class="bar-track"><div class="bar-fill" style="width:82.7%; background:var(--mint);"></div></div>
+          <div class="bar-value">82.7%</div>
+        </div>
+      </div>
+      <p class="footnote">A 16-point jump on data the model never trained on — purely from systematically choosing the depth and leaf-size limits instead of leaving the tree free to overfit.</p>
+    </div>
+  </section>
+
+  <!-- 8: RECAP -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">Recap</div>
+      <h2>What we covered</h2>
+      <div style="display:flex; flex-direction:column; gap:16px; width:100%; max-width:820px;">
+        <div class="lo-item"><span class="badge-check" style="background:var(--mint-dim); border-color:var(--mint); color:var(--mint);">&#10003;</span><p><b>Implemented Grid Search for parameter optimization</b> — listing candidate values per hyperparameter, forming every combination, and cross-validating each one to find the best-performing configuration.</p></div>
+        <div class="lo-item"><span class="badge-check" style="background:var(--mint-dim); border-color:var(--mint); color:var(--mint);">&#10003;</span><p><b>Searched the parameter space systematically</b> — replaced guesswork with an exhaustive, measured comparison across every configuration in a defined grid.</p></div>
+      </div>
+      <div class="divider"></div>
+      <p class="footnote">Next: open the Colab notebook to run Grid Search yourself and inspect the full results table.</p>
+    </div>
+  </section>
+
+  <!-- 9: TRANSITION TO COLAB -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="eyebrow">Hands-on</div>
+      <h2>Let's search the grid ourselves.</h2>
+      <p class="lede">Open the paired Colab notebook — run GridSearchCV end to end, inspect every configuration's score, and confirm the tuned model's improvement on held-out data.</p>
+      <div class="chip-row">
+        <span class="chip">numpy</span>
+        <span class="chip">pandas</span>
+        <span class="chip">scikit-learn</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<button class="nav-btn" id="prevBtn">&larr;</button>
+<button class="nav-btn" id="nextBtn">&rarr;</button>
+<div class="tag-strip">use &larr; &rarr; or space to navigate</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  let idx = 0;
+  document.getElementById('slideTotal').textContent = String(total).padStart(2,'0');
+  function render(){
+    slides.forEach((s,i)=>{ s.classList.toggle('active', i===idx); s.classList.toggle('prev', i<idx); });
+    document.getElementById('slideNow').textContent = String(idx+1).padStart(2,'0');
+    document.getElementById('progressFill').style.width = ((idx+1)/total*100)+'%';
+    document.getElementById('prevBtn').classList.toggle('disabled', idx===0);
+    document.getElementById('nextBtn').classList.toggle('disabled', idx===total-1);
+  }
+  function go(delta){ idx = Math.min(total-1, Math.max(0, idx+delta)); render(); }
+  document.getElementById('nextBtn').addEventListener('click', ()=>go(1));
+  document.getElementById('prevBtn').addEventListener('click', ()=>go(-1));
+  window.addEventListener('keydown', (e)=>{
+    if(['ArrowRight',' ','PageDown'].includes(e.key)){ e.preventDefault(); go(1); }
+    if(['ArrowLeft','PageUp'].includes(e.key)){ e.preventDefault(); go(-1); }
+  });
+  render();
+</script>
+
+</body>
+</html>
