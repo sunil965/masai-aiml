@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Introduction to Unsupervised Learning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#122238; --bg-deep:#0D1A2B; --panel:#1B3552; --grid-line:rgba(255,255,255,0.055);
+    --amber:#F2A93B; --amber-dim:#F2A93B33; --mint:#6FCF97; --mint-dim:#6FCF9733;
+    --rose:#E15B64; --rose-dim:#E15B6433; --text:#F3F7FB; --muted:#93AAC4; --muted-2:#5F7996;
+    --hair:rgba(255,255,255,0.14); --radius:14px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:
+      linear-gradient(var(--grid-line) 1px, transparent 1px) 0 0/48px 48px,
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px) 0 0/48px 48px,
+      radial-gradient(ellipse at 20% -10%, #1c3a5c 0%, var(--bg) 55%),
+      var(--bg);
+    color:var(--text); font-family:'Inter', sans-serif; overflow:hidden;
+    height:100vh; width:100vw; position:relative;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  #deck{position:relative; height:100vh; width:100vw;}
+  .slide{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    padding:52px 88px; opacity:0; visibility:hidden; transform:translateX(48px);
+    transition:opacity .5s ease, transform .5s ease; pointer-events:none; overflow-y:auto;
+  }
+  .slide.active{opacity:1; visibility:visible; transform:translateX(0); pointer-events:auto;}
+  .slide.prev{transform:translateX(-48px);}
+  .slide-inner{width:100%; max-width:1180px; margin:auto; display:flex; flex-direction:column; align-items:center; text-align:center; gap:20px;}
+  .slide-inner.left{align-items:flex-start; text-align:left;}
+  .brand{position:fixed; top:26px; left:40px; display:flex; align-items:center; gap:10px; color:var(--muted-2); font-size:12px; letter-spacing:.14em; text-transform:uppercase; z-index:5;}
+  .brand svg{width:22px; height:22px; opacity:.8;}
+  .counter{position:fixed; top:26px; right:40px; font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--muted); letter-spacing:.05em; z-index:5;}
+  .counter b{color:var(--amber); font-weight:600;}
+  .progress-track{position:fixed; top:0; left:0; height:3px; width:100%; background:rgba(255,255,255,0.06); z-index:6;}
+  .progress-fill{height:100%; background:linear-gradient(90deg,var(--amber),var(--mint)); width:11.1%; transition:width .4s ease;}
+  .nav-btn{position:fixed; bottom:30px; z-index:6; width:46px; height:46px; border-radius:50%; border:1px solid var(--hair); background:rgba(18,34,56,0.85); color:var(--text); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(6px); transition:background .2s, transform .15s, border-color .2s;}
+  .nav-btn:hover{background:rgba(255,255,255,0.09); border-color:var(--amber);}
+  .nav-btn:active{transform:scale(.92);}
+  .nav-btn.disabled{opacity:.25; pointer-events:none;}
+  #prevBtn{left:40px;} #nextBtn{right:40px;}
+  .tag-strip{position:fixed; bottom:36px; left:50%; transform:translateX(-50%); font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.12em; color:var(--muted-2); text-transform:uppercase; z-index:5;}
+  .eyebrow{font-family:'IBM Plex Mono', monospace; font-size:12.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--amber); display:flex; align-items:center; gap:10px;}
+  .eyebrow::before{content:''; width:22px; height:1px; background:var(--amber);}
+  h1{font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:46px; line-height:1.08; letter-spacing:-.01em;}
+  h2{font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:29px; line-height:1.2; letter-spacing:-.01em;}
+  h3{font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:18px;}
+  p.lede{font-size:16.5px; color:var(--muted); max-width:800px; line-height:1.55;}
+  p.body-text{font-size:14.5px; color:var(--muted); line-height:1.6; max-width:820px;}
+  .formula{font-family:'IBM Plex Mono', monospace; font-size:16px; color:var(--amber); background:rgba(242,169,59,0.08); border:1px solid var(--amber-dim); padding:11px 20px; border-radius:10px;}
+  .chip-row{display:flex; gap:12px; flex-wrap:wrap; justify-content:center;}
+  .chip{font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:.06em; padding:7px 15px; border-radius:999px; border:1px solid var(--hair); color:var(--muted); background:rgba(255,255,255,0.02);}
+  .card-grid{display:grid; gap:14px; width:100%;}
+  .card-grid.two{grid-template-columns:1fr 1fr;} .card-grid.three{grid-template-columns:repeat(3,1fr);}
+  .card{background:var(--panel); border:1px solid var(--hair); border-radius:var(--radius); padding:16px 18px; text-align:left; position:relative; overflow:hidden;}
+  .card::before{content:''; position:absolute; top:0; left:0; width:100%; height:3px; background:var(--card-accent, var(--amber));}
+  .card .num{font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:var(--muted-2); letter-spacing:.1em;}
+  .card h3{margin-top:4px; margin-bottom:5px;} .card p{font-size:12.5px; color:var(--muted); line-height:1.45;}
+  table.data-table{border-collapse:collapse; width:100%; font-family:'IBM Plex Mono', monospace; font-size:13px;}
+  table.data-table th, table.data-table td{border:1px solid var(--hair); padding:8px 10px; text-align:center;}
+  table.data-table th{background:rgba(255,255,255,0.04); color:var(--amber); font-weight:500;}
+  table.data-table td.neg{color:var(--rose);} table.data-table td.pos{color:var(--mint);}
+  .divider{width:100%; height:1px; background:var(--hair);}
+  .footnote{font-size:11.5px; color:var(--muted-2); max-width:760px;}
+  .badge-check{display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:var(--mint-dim); border:1px solid var(--mint); color:var(--mint); font-size:12px; flex-shrink:0;}
+  .lo-item{display:flex; gap:14px; align-items:flex-start; text-align:left;}
+  .lo-item p{color:var(--text); font-size:15px; line-height:1.5;}
+  .lo-item span.verb{color:var(--amber); font-weight:600;}
+  svg{flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<div class="brand">
+  <svg viewBox="0 0 24 24" fill="none"><circle cx="6" cy="7" r="2.4" fill="#6FCF97"/><circle cx="10" cy="9" r="2.4" fill="#6FCF97"/><circle cx="7" cy="12" r="2.4" fill="#6FCF97"/><circle cx="17" cy="15" r="2.4" fill="#F2A93B"/><circle cx="20" cy="12" r="2.4" fill="#F2A93B"/><circle cx="18" cy="19" r="2.4" fill="#F2A93B"/></svg>
+  Unsupervised Learning
+</div>
+<div class="counter"><b id="slideNow">01</b> / <span id="slideTotal">09</span></div>
+<div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+<div id="deck">
+
+  <!-- 1: TITLE -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="eyebrow">Session &middot; Unsupervised Learning</div>
+      <h1>Introduction to<br>Unsupervised Learning</h1>
+      <p class="lede">Every model so far has learned from an answer key. This session is about what's left to learn once there isn't one.</p>
+      <div class="chip-row">
+        <span class="chip">UNSUPERVISED LEARNING</span>
+        <span class="chip">PATTERN RECOGNITION</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2: LEARNING OBJECTIVES -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">Learning Objectives</div>
+      <h2>By the end of this session, you will be able to:</h2>
+      <div class="divider"></div>
+      <div style="display:flex; flex-direction:column; gap:18px; width:100%; max-width:820px;">
+        <div class="lo-item"><span class="badge-check">1</span><p><span class="verb">Define</span> the scope of Unsupervised Learning.</p></div>
+        <div class="lo-item"><span class="badge-check">2</span><p><span class="verb">Understand</span> patterns in unlabeled data.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3: SITUATION -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">The Situation</div>
+      <h2>A music streaming service has listening data — but no genre labels at all.</h2>
+      <p class="body-text">For every listener, you know how long, on average, they let a song play before skipping it, and roughly how often they skip. Nobody told the service which listeners prefer which genres — that label simply doesn't exist in the data. And yet, looking at enough listeners, some clearly behave like each other and unlike others. The question this session opens is: <b style="color:var(--text)">can you find that structure without ever being told what to look for?</b></p>
+    </div>
+  </section>
+
+  <!-- 4: SUPERVISED VS UNSUPERVISED -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">Defining the Scope</div>
+      <h2>No target to predict — only structure to discover</h2>
+      <div class="card-grid two">
+        <div class="card" style="--card-accent:var(--mint);">
+          <div class="num">SUPERVISED LEARNING</div>
+          <h3>Has an answer key</h3>
+          <p>Every training example comes with a known label or value — Late/On-Time, a price, a category — and the model learns to predict it on new examples.</p>
+        </div>
+        <div class="card" style="--card-accent:var(--amber);">
+          <div class="num">UNSUPERVISED LEARNING</div>
+          <h3>Has no answer key</h3>
+          <p>There is no label to predict at all. The only information available is the data's own features — and the goal is to find whatever structure, grouping, or pattern is already sitting inside it.</p>
+        </div>
+      </div>
+      <p class="footnote">This isn't a smaller or easier version of supervised learning — it's a different kind of question entirely: not “what's the right answer for this row,” but “what does this data, as a whole, actually look like?”</p>
+    </div>
+  </section>
+
+  <!-- 5: THE SCOPE -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">The Scope of Unsupervised Learning</div>
+      <h2>Three different questions you can ask unlabeled data</h2>
+      <div class="card-grid three">
+        <div class="card" style="--card-accent:var(--amber);">
+          <div class="num">CLUSTERING</div>
+          <h3 style="font-size:15px;">“Which rows are alike?”</h3>
+          <p>Group similar data points together — like listeners with similar habits — without predefining what the groups are.</p>
+        </div>
+        <div class="card" style="--card-accent:var(--amber);">
+          <div class="num">DIMENSIONALITY REDUCTION</div>
+          <h3 style="font-size:15px;">“What's the essential shape?”</h3>
+          <p>Compress many features down to the few that actually carry the meaningful variation, for visualization or efficiency.</p>
+        </div>
+        <div class="card" style="--card-accent:var(--amber);">
+          <div class="num">ANOMALY DETECTION</div>
+          <h3 style="font-size:15px;">“What doesn't fit?”</h3>
+          <p>Flag the data points that look nothing like the rest — useful for catching fraud, defects, or sensor faults.</p>
+        </div>
+      </div>
+      <p class="footnote">All three start from the same place: no labels, just the data's own features.</p>
+    </div>
+  </section>
+
+  <!-- 6: HOW PATTERNS EMERGE -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">Understanding Patterns in Unlabeled Data</div>
+      <h2>Without labels, “similar” has to mean something measurable</h2>
+      <p class="body-text">If two listeners have nearly identical average song length and skip rate, they're sitting close together in feature space — and that closeness, on its own, is a real signal, even with no label attached to either listener. <b style="color:var(--text)">Distance</b> between data points is the basic building block nearly every unsupervised method relies on: small distance suggests similarity, large distance suggests difference.</p>
+      <div class="formula">distance(A, B) small &rarr; A and B likely belong together</div>
+    </div>
+  </section>
+
+  <!-- 7: WORKED EXAMPLE -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">Worked Example</div>
+      <h2>8 listeners, plotted by behavior alone — no labels used</h2>
+      <div style="display:flex; gap:32px; width:100%; align-items:center;">
+        <svg viewBox="0 0 300 170" width="360" height="204">
+          <line x1="20" y1="150" x2="290" y2="150" stroke="#93AAC4" stroke-width="1"/>
+          <line x1="20" y1="150" x2="20" y2="20" stroke="#93AAC4" stroke-width="1"/>
+          <text x="155" y="166" fill="#5F7996" font-size="10" text-anchor="middle">avg. song length</text>
+          <text x="10" y="90" fill="#5F7996" font-size="10" text-anchor="middle" transform="rotate(-90 10 90)">skip rate</text>
+          <circle cx="56.4" cy="124.0" r="6" fill="#93AAC4"/>
+          <circle cx="68.7" cy="133.3" r="6" fill="#93AAC4"/>
+          <circle cx="65.3" cy="138.9" r="6" fill="#93AAC4"/>
+          <circle cx="54.9" cy="124.0" r="6" fill="#93AAC4"/>
+          <circle cx="241.0" cy="47.9" r="6" fill="#93AAC4"/>
+          <circle cx="215.0" cy="33.0" r="6" fill="#93AAC4"/>
+          <circle cx="248.1" cy="55.3" r="6" fill="#93AAC4"/>
+          <circle cx="234.7" cy="53.4" r="6" fill="#93AAC4"/>
+        </svg>
+        <div style="flex:1; text-align:left;">
+          <p class="body-text" style="max-width:none;">Every dot is the same color — nothing here has been labeled or grouped. But the visual clustering is obvious: four listeners sit close together in the lower-left, four sit close together in the upper-right, and the two clusters are far apart. That grouping came entirely from the numbers themselves.</p>
+        </div>
+      </div>
+      <table class="data-table" style="max-width:600px;">
+        <tr><th>Average within-group distance</th><th>Average across-group distance</th><th>Ratio</th></tr>
+        <tr><td class="pos">0.355</td><td class="neg">4.69</td><td>13.2&times;</td></tr>
+      </table>
+      <p class="footnote">Listeners in the same group sit, on average, over 13 times closer to each other than to listeners in the other group — a pattern discovered without a single label.</p>
+    </div>
+  </section>
+
+  <!-- 8: RECAP -->
+  <section class="slide">
+    <div class="slide-inner left">
+      <div class="eyebrow">Recap</div>
+      <h2>What we covered</h2>
+      <div style="display:flex; flex-direction:column; gap:16px; width:100%; max-width:820px;">
+        <div class="lo-item"><span class="badge-check" style="background:var(--mint-dim); border-color:var(--mint); color:var(--mint);">&#10003;</span><p><b>Defined the scope of Unsupervised Learning</b> — no answer key to learn from, and three broad questions it can answer: which rows are alike (clustering), what's the essential shape (dimensionality reduction), and what doesn't fit (anomaly detection).</p></div>
+        <div class="lo-item"><span class="badge-check" style="background:var(--mint-dim); border-color:var(--mint); color:var(--mint);">&#10003;</span><p><b>Understood patterns in unlabeled data</b> — distance in feature space is the basic signal: points close together tend to share behavior, and that alone revealed two clear groups in our listener data.</p></div>
+      </div>
+      <div class="divider"></div>
+      <p class="footnote">Next: open the Colab notebook to explore unlabeled data yourself and see structure emerge from the numbers alone.</p>
+    </div>
+  </section>
+
+  <!-- 9: TRANSITION TO COLAB -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="eyebrow">Hands-on</div>
+      <h2>Let's look for the structure ourselves.</h2>
+      <p class="lede">Open the paired Colab notebook — compute distances between unlabeled points, visualize the groups that emerge, and see the same pattern on a larger, real dataset.</p>
+      <div class="chip-row">
+        <span class="chip">numpy</span>
+        <span class="chip">pandas</span>
+        <span class="chip">scikit-learn</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<button class="nav-btn" id="prevBtn">&larr;</button>
+<button class="nav-btn" id="nextBtn">&rarr;</button>
+<div class="tag-strip">use &larr; &rarr; or space to navigate</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  let idx = 0;
+  document.getElementById('slideTotal').textContent = String(total).padStart(2,'0');
+  function render(){
+    slides.forEach((s,i)=>{ s.classList.toggle('active', i===idx); s.classList.toggle('prev', i<idx); });
+    document.getElementById('slideNow').textContent = String(idx+1).padStart(2,'0');
+    document.getElementById('progressFill').style.width = ((idx+1)/total*100)+'%';
+    document.getElementById('prevBtn').classList.toggle('disabled', idx===0);
+    document.getElementById('nextBtn').classList.toggle('disabled', idx===total-1);
+  }
+  function go(delta){ idx = Math.min(total-1, Math.max(0, idx+delta)); render(); }
+  document.getElementById('nextBtn').addEventListener('click', ()=>go(1));
+  document.getElementById('prevBtn').addEventListener('click', ()=>go(-1));
+  window.addEventListener('keydown', (e)=>{
+    if(['ArrowRight',' ','PageDown'].includes(e.key)){ e.preventDefault(); go(1); }
+    if(['ArrowLeft','PageUp'].includes(e.key)){ e.preventDefault(); go(-1); }
+  });
+  render();
+</script>
+
+</body>
+</html>
